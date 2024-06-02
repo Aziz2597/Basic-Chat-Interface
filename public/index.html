@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat APP</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    #header {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      padding: 10px;
+      background-color: #eee;
+    }
+
+    #messages {
+      overflow-y: scroll;
+      max-height: 200px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      width: 300px;
+      margin-top: 10px;
+    }
+
+    #messageInputContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    #message {
+      margin-bottom: 10px;
+    }
+
+    #typing {
+      color: #555;
+      margin-top: 10px;
+    }
+
+    #onlineUsers {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="header">
+    <h1>Chatting</h1>
+    <div id="onlineUsers"></div>
+  </div>
+
+  <div id="messages"></div>
+
+  <div id="typing"></div>
+
+  <div id="messageInputContainer">
+    <input type="text" id="message" placeholder="Enter Message" />
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <!-- Socket.io script -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Create a Socket.IO instance
+    const socket = io();
+    
+    // DOM elements
+    const sendBtn = document.getElementById("sendBtn");
+    const messageInput = document.getElementById("message");
+    const allMessages = document.getElementById("messages");
+    const typingDiv = document.getElementById("typing");
+    const onlineUsersDiv = document.getElementById("onlineUsers");
+
+    // User ID obtained through user prompt
+    let userID;
+    do {
+      userID = prompt("Enter your user ID:");
+    } while (!userID);
+
+    // Emit "new-user" event with the entered user ID
+    socket.emit("new-user", userID);
+
+    // Listen for incoming messages from the server
+    socket.on("message", (data) => {
+      // Create a new paragraph element for each message and append it to the messages container
+      const p = document.createElement("p");
+      p.innerText = `${data.userID}: ${data.message}`;
+      allMessages.appendChild(p);
+    });
+
+    
+    socket.on("user-typing", (user) => {
+      typingDiv.innerText = `${user} is typing...`;
+    });
+
+    socket.on("user-stopped-typing", () => {
+      typingDiv.innerText = "";
+    });
+
+    socket.on("online-users", (users) => {
+      onlineUsersDiv.innerHTML = `Online Users: ${users.join(", ")}`;
+    });
+
+    sendBtn.addEventListener("click", sendMessage);
+
+    let isTyping = false;
+
+    // Input event listener for typing indicator
+    messageInput.addEventListener("input", () => {
+      if (!isTyping) {
+        // Emit "typing" event when user starts typing
+        isTyping = true;
+        socket.emit("typing");
+      }
+    });
+
+    // Blur event listener to stop typing indicator when focus is lost
+    messageInput.addEventListener("blur", () => {
+      if (isTyping) {
+        // Emit "stop-typing" event when user stops typing
+        isTyping = false;
+        socket.emit("stop-typing");
+      }
+    });
+
+    // Function to send a message
+    function sendMessage() {
+      const message = messageInput.value;
+      if (message.trim() !== "") {
+        // Emit "user-message" event with user ID and message content
+        socket.emit("user-message", { userID, message });
+        // Clear input and stop typing indicator
+        messageInput.value = "";
+        isTyping = false;
+        socket.emit("stop-typing");
+      }
+    }
+  </script>
+</body>
+
+</html>

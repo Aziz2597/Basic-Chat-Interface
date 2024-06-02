@@ -1,0 +1,8 @@
+# ignore node_modules
+node_modules/
+
+# ignore all files starting with a dot
+.DS_Store
+
+# ignore build artifacts
+public/build*
